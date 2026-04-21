@@ -940,8 +940,8 @@
                 <div class="coin-wrap" style="margin-top:14px;">
                   <button class="coin-button" id="coinButton" disabled>🪙</button>
                   <div class="coin-help">
-                    點擊金幣一次算 1 元。你必須把總價付清，左下角的下一關才會解鎖。<br>
-                    多比是免費的，所以選多比時總價會下降。
+                    點擊金幣一次算 1 元。你必須把總價付清，下方的下一關才會解鎖。<br>
+                    多比不用花錢，Dobby is free。
                   </div>
                 </div>
               </div>
@@ -1087,6 +1087,8 @@
       storySceneIndex: 0,
       storyTypingTimer: null,
       audioCtx: null,
+      lastAhTime: 0,
+      lastVoiceTime: 0,
     };
 
     const stepsMeta = ["錄取信", "採購", "月台", "分類帽", "跩哥", "魁地奇", "學期結束"];
@@ -1615,7 +1617,7 @@
       } else if (!state.paymentStarted) {
         paymentSummary.textContent = `你已選擇物品，總共需要 ${total} 枚金幣。點擊「開始付錢」後，再連點金幣直到付清。`;
       } else if (state.paidAmount < total) {
-        paymentSummary.textContent = `付款進行中：還差 ${total - state.paidAmount} 枚金幣。繼續點右下方的金幣。`;
+        paymentSummary.textContent = `付款進行中：還差 ${total - state.paidAmount} 枚金幣。繼續點下方的金幣。`;
       } else {
         paymentSummary.textContent = '付款完成！左下角已解鎖，你可以前往下一關。';
       }
@@ -1703,6 +1705,99 @@
       if (state.audioCtx && state.audioCtx.state === 'suspended') state.audioCtx.resume();
     }
 
+    function playKidAh(intensity = 1) {
+      ensureAudioContext();
+      if (!state.audioCtx) return;
+      const ctx = state.audioCtx;
+      const now = ctx.currentTime;
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const vibrato = ctx.createOscillator();
+      const vibratoGain = ctx.createGain();
+
+      osc.type = 'triangle';
+      vibrato.type = 'sine';
+
+      const baseFreq = 720 + Math.random() * 140 + intensity * 40;
+
+      osc.frequency.setValueAtTime(baseFreq, now);
+      osc.frequency.exponentialRampToValueAtTime(baseFreq * (1.18 + Math.random() * 0.08), now + 0.05);
+      osc.frequency.exponentialRampToValueAtTime(baseFreq * (0.92 + Math.random() * 0.06), now + 0.13);
+
+      vibrato.frequency.setValueAtTime(18 + Math.random() * 8, now);
+      vibratoGain.gain.setValueAtTime(18 + intensity * 4, now);
+
+      vibrato.connect(vibratoGain);
+      vibratoGain.connect(osc.frequency);
+
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.14 + intensity * 0.03, now + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      vibrato.start(now);
+      osc.start(now);
+
+      osc.stop(now + 0.17);
+      vibrato.stop(now + 0.17);
+    }
+
+    function playKidVoiceLine(kind = 'stop') {
+      ensureAudioContext();
+      if (!state.audioCtx) return;
+      const ctx = state.audioCtx;
+      const now = ctx.currentTime;
+
+      const presets = {
+        stop: [
+          [560, 0.00, 0.055, 0.075],
+          [690, 0.05, 0.055, 0.078],
+          [610, 0.10, 0.055, 0.082],
+          [760, 0.15, 0.07, 0.088]
+        ],
+        pain: [
+          [760, 0.00, 0.045, 0.09],
+          [880, 0.04, 0.05, 0.1],
+          [720, 0.08, 0.06, 0.095]
+        ]
+      };
+
+      (presets[kind] || presets.stop).forEach(([freq, startOffset, dur, amp], i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const vibrato = ctx.createOscillator();
+        const vibratoGain = ctx.createGain();
+        const start = now + startOffset;
+        const end = start + dur;
+
+        osc.type = i % 2 === 0 ? 'triangle' : 'sawtooth';
+        vibrato.type = 'sine';
+        osc.frequency.setValueAtTime(freq + Math.random() * 35, start);
+        osc.frequency.exponentialRampToValueAtTime(freq * (1.14 + Math.random() * 0.05), start + dur * 0.35);
+        osc.frequency.exponentialRampToValueAtTime(freq * (0.88 + Math.random() * 0.05), end);
+
+        vibrato.frequency.setValueAtTime(22 + Math.random() * 8, start);
+        vibratoGain.gain.setValueAtTime(13 + Math.random() * 5, start);
+
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(amp + i * 0.01, start + 0.008);
+        gain.gain.exponentialRampToValueAtTime(0.001, end);
+
+        vibrato.connect(vibratoGain);
+        vibratoGain.connect(osc.frequency);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        vibrato.start(start);
+        osc.start(start);
+        osc.stop(end);
+        vibrato.stop(end);
+      });
+    }
+
     function playSlapSound() {
       ensureAudioContext();
       if (!state.audioCtx) return;
@@ -1744,16 +1839,35 @@
       yellOsc.start(now + 0.006);
       yellOsc.stop(now + 0.18);
 
-      if ('speechSynthesis' in window && (state.dracoSlapCount % 10 === 0 || state.dracoSlapCount >= 70)) {
-        try {
-          window.speechSynthesis.cancel();
-          const utter = new SpeechSynthesisUtterance('阿');
-          utter.lang = 'zh-TW';
-          utter.volume = 1;
-          utter.rate = 1.25;
-          utter.pitch = 1.7;
-          window.speechSynthesis.speak(utter);
-        } catch (e) {}
+      const perfNow = performance.now();
+      const count = state.dracoSlapCount;
+
+      if (count >= 75) {
+        if (perfNow - state.lastAhTime >= 58) {
+          state.lastAhTime = perfNow;
+          playKidAh(1.15 + count / 120);
+        }
+        if (count >= 90 && perfNow - state.lastVoiceTime >= 185) {
+          state.lastVoiceTime = perfNow;
+          playKidVoiceLine('pain');
+        }
+        return;
+      }
+
+      if (count >= 55) {
+        if (count % 5 === 0 && perfNow - state.lastVoiceTime >= 210) {
+          state.lastVoiceTime = perfNow;
+          playKidVoiceLine(count >= 65 ? 'pain' : 'stop');
+        } else if (perfNow - state.lastAhTime >= 95) {
+          state.lastAhTime = perfNow;
+          playKidAh(0.92 + count / 180);
+        }
+        return;
+      }
+
+      if (count % 5 === 0 && perfNow - state.lastVoiceTime >= 240) {
+        state.lastVoiceTime = perfNow;
+        playKidVoiceLine('stop');
       }
     }
 
@@ -1829,6 +1943,9 @@
           if (state.dracoSlapCount >= 100) return;
           state.dracoSlapCount += 1;
           updateDracoSlapMeter();
+          if (state.dracoSlapCount >= 72 && dracoPortrait.getAttribute('src') !== 'Draco Malfoy scary.jpg') {
+            dracoPortrait.src = 'Draco Malfoy scary.jpg';
+          }
           animateSlap();
           playSlapSound();
           if (state.dracoSlapCount >= 100) {
