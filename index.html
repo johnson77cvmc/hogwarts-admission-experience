@@ -1048,7 +1048,6 @@
   </div>
 
   <script>
-    const VALID_MAGIC_PASS = "HP-2026-1013";
 
     const state = {
       step: 0,
@@ -1399,6 +1398,30 @@
       admissionWarn.classList.remove('show');
     });
     userNameInput.addEventListener('input', () => admissionWarn.classList.remove('show'));
+
+
+
+    toSortingBtn.addEventListener('click', () => {
+      const name = userNameInput.value.trim();
+      const code = magicCodeInput.value.trim();
+
+      const pattern = /^HP-2026-\d{4}$/;
+
+      if (!name || !pattern.test(code)) {
+        admissionWarn.textContent = "請輸入正確格式（HP-2026-XXXX）";
+        admissionWarn.classList.add('show');
+        return;
+  }
+
+   admissionWarn.classList.remove('show');
+   state.name = name;
+   state.magicCode = code;
+
+   renderIdentity();
+   goToStep(1); // 或你原本的下一步
+});
+
+	
 
     toSortingBtn.addEventListener('click', () => {
       const name = userNameInput.value.trim();
