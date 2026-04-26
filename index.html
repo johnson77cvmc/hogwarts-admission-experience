@@ -1757,76 +1757,6 @@
       osc2.stop(now + 0.18);
     }
 
-    function resetVisualEffects() {
-      document.body.style.background = '';
-      document.body.style.filter = 'none';
-      document.body.style.transform = 'none';
-    }
-
-    function playQuaffleHitSound() {
-      ensureAudioContext();
-      if (!state.audioCtx) return;
-      const ctx = state.audioCtx;
-      const now = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(680, now);
-      osc.frequency.exponentialRampToValueAtTime(360, now + 0.10);
-      gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(0.16, now + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.10);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.10);
-    }
-
-    function playBludgerHitSound() {
-      ensureAudioContext();
-      if (!state.audioCtx) return;
-      const ctx = state.audioCtx;
-      const now = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(220, now);
-      osc.frequency.exponentialRampToValueAtTime(90, now + 0.18);
-      gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(0.20, now + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.18);
-    }
-
-    function playSnitchHitSound() {
-      ensureAudioContext();
-      if (!state.audioCtx) return;
-      const ctx = state.audioCtx;
-      const now = ctx.currentTime;
-      const osc1 = ctx.createOscillator();
-      const osc2 = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc1.type = 'sine';
-      osc2.type = 'triangle';
-      osc1.frequency.setValueAtTime(1300, now);
-      osc1.frequency.exponentialRampToValueAtTime(2200, now + 0.20);
-      osc2.frequency.setValueAtTime(1800, now);
-      osc2.frequency.exponentialRampToValueAtTime(2800, now + 0.22);
-      gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(0.20, now + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.24);
-      osc1.connect(gain);
-      osc2.connect(gain);
-      gain.connect(ctx.destination);
-      osc1.start(now);
-      osc2.start(now);
-      osc1.stop(now + 0.22);
-      osc2.stop(now + 0.24);
-    }
-
     function playSlapSound() {
       ensureAudioContext();
       if (!state.audioCtx) return;
@@ -1879,7 +1809,6 @@
       setTimeout(() => {
         box.remove();
         state.dracoFinalOverlayShown = false;
-        resetVisualEffects();
         goDracoScene(4);
       }, 1500);
     }
@@ -2045,7 +1974,9 @@
       state.lastAhTime = 0;
       state.lastVoiceTime = 0;
       state.dracoFinalOverlayShown = false;
-      resetVisualEffects();
+      document.body.style.background = '';
+      document.body.style.filter = '';
+      document.body.style.transform = 'none';
       goToStep(4);
       renderDracoScene();
     }
@@ -2103,18 +2034,9 @@
       state.quidditchScore += ballConfig[type].score;
       if (state.quidditchScore < 0) state.quidditchScore = 0;
       quidditchScoreEl.textContent = state.quidditchScore;
-      if (type === 'quaffle') {
-        state.quaffleCount = Math.max(0, state.quaffleCount - 1);
-        playQuaffleHitSound();
-      }
-      if (type === 'bludger') {
-        state.bludgerCount = Math.max(0, state.bludgerCount - 1);
-        playBludgerHitSound();
-      }
-      if (type === 'snitch') {
-        state.snitchActive = false;
-        playSnitchHitSound();
-      }
+      if (type === 'quaffle') state.quaffleCount = Math.max(0, state.quaffleCount - 1);
+      if (type === 'bludger') state.bludgerCount = Math.max(0, state.bludgerCount - 1);
+      if (type === 'snitch') state.snitchActive = false;
       updateBallCounts();
       ball.remove();
     }
@@ -2184,7 +2106,6 @@
     }
 
     function resetGameUI() {
-      resetVisualEffects();
       clearTimeout(state.normalBallTimer);
       clearInterval(state.countTimer);
       clearBalls();
